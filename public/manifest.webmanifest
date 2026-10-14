@@ -1,0 +1,10 @@
+{
+  "name": "WardLens — Civic Participation",
+  "short_name": "WardLens",
+  "description": "Follow local proposals, public projects, budgets and community feedback.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6fbff",
+  "theme_color": "#e7f4ff",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

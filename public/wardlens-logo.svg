@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 58" role="img" aria-labelledby="title">
+<title id="title">WardLens</title>
+<rect x="2" y="3" width="52" height="52" rx="16" fill="#1687d9"/>
+<path d="M13 41V17h7v9l11-9h10L27 29l14 12H30L20 32v9z" fill="#fff"/>
+<circle cx="43" cy="15" r="4" fill="#bde7ff"/>
+<text x="66" y="37" font-family="Inter,Arial,sans-serif" font-size="27" font-weight="750" fill="#15354d">WardLens</text>
+</svg>
