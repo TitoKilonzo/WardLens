@@ -1,4 +1,5 @@
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:4000/api';
+const configuredApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+const API_URL = (configuredApiUrl || (import.meta.env.DEV ? 'http://localhost:4000/api' : '/api')).replace(/\/+$/, '');
 const TOKEN_KEY = 'wardlens.token';
 
 export class ApiError extends Error {
@@ -8,6 +9,9 @@ export class ApiError extends Error {
 export function getToken(): string | null { return localStorage.getItem(TOKEN_KEY); }
 export function setToken(token: string | null): void { if (token) localStorage.setItem(TOKEN_KEY, token); else localStorage.removeItem(TOKEN_KEY); }
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+  if (!configuredApiUrl && !import.meta.env.DEV) {
+    throw new ApiError('WardLens API is not configured. Set VITE_API_URL to the deployed API URL and rebuild the frontend.', 0);
+  }
   const token = getToken();
   const headers = new Headers(options.headers);
   if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');

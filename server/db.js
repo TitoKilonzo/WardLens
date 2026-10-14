@@ -5,6 +5,21 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+const isProduction = process.env.NODE_ENV === 'production';
+if (isProduction) {
+  const missing = ['JWT_SECRET', 'ADMIN_EMAIL', 'ADMIN_PASSWORD', 'CORS_ORIGIN']
+    .filter((key) => !process.env[key]?.trim());
+  if (missing.length) {
+    throw new Error(`Missing required production environment variables: ${missing.join(', ')}`);
+  }
+  if (process.env.JWT_SECRET === 'dev-only-change-this-secret-before-deployment') {
+    throw new Error('JWT_SECRET must be replaced with a unique production secret.');
+  }
+  const origins = process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim());
+  if (origins.some((origin) => !origin || origin === '*' || origin.includes('localhost'))) {
+    throw new Error('CORS_ORIGIN must contain only explicit hosted frontend origins in production.');
+  }
+}
 const configuredPath = process.env.DATABASE_PATH || './data/wardlens.sqlite';
 const dbPath = path.isAbsolute(configuredPath) ? configuredPath : path.resolve(here, '..', configuredPath);
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
@@ -161,9 +176,11 @@ migrateDemoEmails();
 
 const insertUser = db.prepare('INSERT OR IGNORE INTO users(name,email,password_hash,role,ward_id) VALUES(?,?,?,?,?)');
 insertUser.run('WardLens Administrator', adminEmail, bcrypt.hashSync(adminPassword, 10), 'admin', 1);
-insertUser.run('Amina Njeri', residentEmail, bcrypt.hashSync(residentPassword, 10), 'resident', 1);
-insertUser.run('County Project Officer', 'officer@wardlens.com', bcrypt.hashSync('Officer123!', 10), 'officer', 1);
-insertUser.run('Public Finance Reviewer', 'oversight@wardlens.com', bcrypt.hashSync('Oversight123!', 10), 'oversight', 1);
+if (!isProduction) {
+  insertUser.run('Amina Njeri', residentEmail, bcrypt.hashSync(residentPassword, 10), 'resident', 1);
+  insertUser.run('County Project Officer', 'officer@wardlens.com', bcrypt.hashSync('Officer123!', 10), 'officer', 1);
+  insertUser.run('Public Finance Reviewer', 'oversight@wardlens.com', bcrypt.hashSync('Oversight123!', 10), 'oversight', 1);
+}
 
 const projectCount = db.prepare('SELECT COUNT(*) AS count FROM projects').get().count;
 if (projectCount === 0) {

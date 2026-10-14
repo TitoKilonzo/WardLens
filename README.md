@@ -57,7 +57,19 @@ SQLite creates `data/wardlens.sqlite` automatically and seeds example wards, pro
 | Oversight | `oversight@wardlens.com` | `Oversight123!` |
 | Administrator | `admin@wardlens.com` | `ChangeMe_Admin_123!` (from `.env.example`) |
 
-The API prints the configured resident and admin demo credentials on startup. The officer and oversight demo passwords are `Officer123!` and `Oversight123!`. Configure credentials through `.env` before creating the database for the first time. Seed users are inserted only if their emails do not already exist; changing the environment password later does not change an existing database user's password.
+These accounts are for local development only. The API does not print credentials at startup. Production starts with only the administrator configured through the hosting provider's `ADMIN_EMAIL` and `ADMIN_PASSWORD` environment variables; it does not create the local resident, officer, or oversight demo accounts. Users can create resident accounts through the registration page. Seed users are inserted only if their emails do not already exist, so changing an environment password does not change an existing database user's password.
+
+## Deploy frontend to Vercel and API to Render
+
+The frontend is a static Vite application and can be deployed to Vercel. The API uses Express and SQLite, so it must run on a persistent server with durable storage; SQLite files stored in serverless function filesystems are temporary and can disappear between requests or deployments. This repository includes [`render.yaml`](./render.yaml), which provisions the API with an attached persistent disk.
+
+1. In Render, create a **Blueprint** from this repository and apply `render.yaml`. Set `ADMIN_EMAIL` to the administrator's email and `CORS_ORIGIN` to the exact Vercel website origin, such as `https://wardlens.vercel.app` (no trailing slash). Render generates `JWT_SECRET` and `ADMIN_PASSWORD`; retrieve the generated administrator password from the Render environment settings and store it securely.
+2. Wait for the API service to deploy. Verify its health endpoint at `https://<your-api-service>.onrender.com/api/health`; it should return JSON with `"status":"ok"`.
+3. Import the repository into Vercel. Set the project root to the repository root and add the environment variable `VITE_API_URL` with the API's full URL, including `/api`, for example `https://<your-api-service>.onrender.com/api`.
+4. Deploy or redeploy the Vercel project after setting `VITE_API_URL`; Vite embeds this value at build time. In Render, keep `CORS_ORIGIN` set to the exact deployed Vercel origin. Add a custom domain or preview origin to that comma-separated allowlist if you use one, then redeploy the API.
+5. Test registration/sign-in, project and ward lists, project details, and a write action such as contact submission. Browser API requests should go to the Render URL, not `localhost` or the Vercel static site.
+
+Keep `JWT_SECRET`, `ADMIN_PASSWORD`, and database contents private. Do not use the local demo passwords in production. The SQLite disk is intended for a single API instance; configure backups and avoid scaling the API to multiple instances that write to the same SQLite database.
 
 ## Production build and PWA preview
 
@@ -77,7 +89,7 @@ Open `http://localhost:4173`. The service worker registers in production builds.
 | `JWT_SECRET` | JWT signing secret | Development placeholder in code if unset; replace it |
 | `JWT_EXPIRES_IN` | Session lifetime | `12h` |
 | `CORS_ORIGIN` | Comma-separated frontend origins allowed by API | `http://localhost:5173` |
-| `VITE_API_URL` | API base URL used by Vite frontend | `http://localhost:4000/api` |
+| `VITE_API_URL` | API base URL used by Vite frontend; set to the hosted API URL when deploying the frontend separately | `http://localhost:4000/api` |
 | `DATABASE_PATH` | SQLite database path | `./data/wardlens.sqlite` |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Seed admin credentials | See `.env.example` |
 | `RESIDENT_EMAIL` / `RESIDENT_PASSWORD` | Seed resident credentials | See `.env.example` |

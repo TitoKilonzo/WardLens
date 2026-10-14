@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { db, audit, publicProject, adminEmail, residentEmail } from './db.js';
+import { db, audit, publicProject } from './db.js';
 
 const app = express();
 const PORT = Number(process.env.PORT || 4000);
@@ -338,7 +338,5 @@ if (process.env.SERVE_FRONTEND === 'true') {
 }
 
 app.listen(PORT, () => {
-  console.log(`WardLens API listening on http://localhost:${PORT}/api`);
-  console.log(`Demo administrator: ${adminEmail} / ${process.env.ADMIN_PASSWORD || 'Admin123!'}`);
-  console.log(`Demo resident: ${residentEmail} / ${process.env.RESIDENT_PASSWORD || 'Resident123!'}`);
+  console.log(`WardLens API listening on port ${PORT}`);
 });
