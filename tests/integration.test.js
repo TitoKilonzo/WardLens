@@ -40,6 +40,23 @@ test('health endpoint returns the service state', async () => {
   assert.equal((await response.json()).status,'ok');
 });
 
+test('sign-in role must match the authenticated account role', async () => {
+  const mismatch = await fetch(`${apiBase}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'test-admin@example.com', password: 'TestingAdmin123!', role: 'resident' })
+  });
+  assert.equal(mismatch.status, 403);
+
+  const match = await fetch(`${apiBase}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'test-admin@example.com', password: 'TestingAdmin123!', role: 'admin' })
+  });
+  assert.equal(match.status, 200);
+  assert.equal((await match.json()).user.role, 'admin');
+});
+
 test('public project listing contains the seeded demonstration projects', async () => {
   const response = await fetch(`${apiBase}/projects`);
   assert.equal(response.status,200);
