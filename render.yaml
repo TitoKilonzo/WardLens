@@ -20,4 +20,4 @@ services:
       - key: TURSO_AUTH_TOKEN
         sync: false
       - key: CORS_ORIGIN
-        sync: false
+        value: https://wardlens.vercel.app

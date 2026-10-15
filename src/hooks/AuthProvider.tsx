@@ -1,5 +1,5 @@
 import { createContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api, setToken } from '../utils/api';
+import { api, getToken, setToken } from '../utils/api';
 import type { Role, User } from '../types';
 
 interface AuthContextValue { user: User | null; loading: boolean; signIn: (email: string, password: string, role: Role) => Promise<void>; signUp: (data: { name:string; email:string; password:string; ward_id:number }) => Promise<void>; signOut: () => Promise<void>; }
@@ -9,6 +9,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     let active = true;
+    if (!getToken()) {
+      setLoading(false);
+      return () => { active = false; };
+    }
     api<{ user: User }>('/auth/me').then((data) => { if (active) setUser(data.user); }).catch(() => { setToken(null); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);

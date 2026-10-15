@@ -12,7 +12,20 @@ const PORT = Number(process.env.PORT || 4000);
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-change-this-secret-before-deployment';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '12h';
 const originSetting = process.env.CORS_ORIGIN || 'http://localhost:5173';
-app.use(cors({ origin: originSetting.split(',').map((x) => x.trim()), credentials: true }));
+const allowedOrigins = originSetting.split(',').map((value) => {
+  const configuredOrigin = value.trim();
+  let parsedOrigin;
+  try {
+    parsedOrigin = new URL(configuredOrigin);
+  } catch {
+    throw new Error(`Invalid origin in CORS_ORIGIN: ${configuredOrigin}`);
+  }
+  if (!['http:', 'https:'].includes(parsedOrigin.protocol) || parsedOrigin.pathname !== '/' || parsedOrigin.search || parsedOrigin.hash) {
+    throw new Error(`CORS_ORIGIN entries must be HTTP(S) origins without a path: ${configuredOrigin}`);
+  }
+  return parsedOrigin.origin;
+});
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
