@@ -6,20 +6,18 @@ services:
     buildCommand: npm install
     startCommand: npm run api
     healthCheckPath: /api/health
-    disk:
-      name: wardlens-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_PATH
-        value: /var/data/wardlens.sqlite
       - key: JWT_SECRET
         generateValue: true
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
         generateValue: true
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
       - key: CORS_ORIGIN
         sync: false

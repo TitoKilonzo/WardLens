@@ -46,7 +46,7 @@ The included ward names, residents, project statuses, budgets, and expenditure r
 
 On Windows, after installing dependencies and configuring `.env`, you can double-click `start-wardlens.bat` to start both services and launch the site in your browser. `npm run dev:web` is available when you intentionally want to run only the frontend.
 
-SQLite creates `data/wardlens.sqlite` automatically and seeds example wards, projects, budget records, milestones, and accounts on the first run. Data is persistent between API restarts. Delete the local database file to reset to seed data; stop the API first. Existing seeded demo accounts from an older install are migrated to the `.com` addresses on startup when the target address is not already in use. Legacy `.local` values in the previous `.env` settings for the demo accounts are normalized to `.com`.
+When no Turso credentials are configured, SQLite creates `data/wardlens.sqlite` automatically and seeds example wards, projects, budget records, milestones, and local development accounts on first run. This local adapter is retained for development and integration tests. Set both `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` to use Turso instead; the API creates the schema and initial example records on its first connection. A partial Turso configuration is rejected rather than silently falling back to local SQLite.
 
 ## Demo accounts
 
@@ -59,17 +59,31 @@ SQLite creates `data/wardlens.sqlite` automatically and seeds example wards, pro
 
 These accounts are for local development only. The API does not print credentials at startup. Production starts with only the administrator configured through the hosting provider's `ADMIN_EMAIL` and `ADMIN_PASSWORD` environment variables; it does not create the local resident, officer, or oversight demo accounts. Users can create resident accounts through the registration page. Seed users are inserted only if their emails do not already exist, so changing an environment password does not change an existing database user's password.
 
-## Deploy frontend to Vercel and API to Render
+## Deploy frontend to Vercel and API to Render with Turso
 
-The frontend is a static Vite application and can be deployed to Vercel. The API uses Express and SQLite, so it must run on a persistent server with durable storage; SQLite files stored in serverless function filesystems are temporary and can disappear between requests or deployments. This repository includes [`render.yaml`](./render.yaml), which provisions the API with an attached persistent disk.
+The frontend is a static Vite application and can be deployed to Vercel. The Express API uses Turso's hosted libSQL database in production, so it does not depend on a local file that can disappear on serverless hosts. Turso is SQLite-compatible and relational; the app keeps its existing relational schema and SQL API. This repository includes [`render.yaml`](./render.yaml) for the API host environment.
 
-1. In Render, create a **Blueprint** from this repository and apply `render.yaml`. Set `ADMIN_EMAIL` to the administrator's email and `CORS_ORIGIN` to the exact Vercel website origin, such as `https://wardlens.vercel.app` (no trailing slash). Render generates `JWT_SECRET` and `ADMIN_PASSWORD`; retrieve the generated administrator password from the Render environment settings and store it securely.
-2. Wait for the API service to deploy. Verify its health endpoint at `https://<your-api-service>.onrender.com/api/health`; it should return JSON with `"status":"ok"`.
-3. Import the repository into Vercel. Set the project root to the repository root and add the environment variable `VITE_API_URL` with the API's full URL, including `/api`, for example `https://<your-api-service>.onrender.com/api`.
-4. Deploy or redeploy the Vercel project after setting `VITE_API_URL`; Vite embeds this value at build time. In Render, keep `CORS_ORIGIN` set to the exact deployed Vercel origin. Add a custom domain or preview origin to that comma-separated allowlist if you use one, then redeploy the API.
-5. Test registration/sign-in, project and ward lists, project details, and a write action such as contact submission. Browser API requests should go to the Render URL, not `localhost` or the Vercel static site.
+1. Create a Turso database and generate an authentication token using the [Turso dashboard or CLI](https://docs.turso.tech/). Copy the database URL (usually starts with `libsql://`) and token; keep the token private.
+2. In Render, create a **Blueprint** from this repository and apply `render.yaml`. Set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `ADMIN_EMAIL`, and `CORS_ORIGIN` in the service environment. Set the CORS value to the exact Vercel website origin, such as `https://wardlens.vercel.app` (no trailing slash). Render generates `JWT_SECRET` and `ADMIN_PASSWORD`; retrieve the generated administrator password from the Render environment settings and store it securely.
+3. Wait for the API service to deploy. The API initializes the Turso schema and sample records before listening. Verify its health endpoint at `https://<your-api-service>.onrender.com/api/health`; it should return JSON with `"status":"ok"`.
+4. Import the repository into Vercel. Set the project root to the repository root and add the environment variable `VITE_API_URL` with the API's full URL, including `/api`, for example `https://<your-api-service>.onrender.com/api`.
+5. Deploy or redeploy the Vercel project after setting `VITE_API_URL`; Vite embeds this value at build time. In Render, keep `CORS_ORIGIN` set to the exact deployed Vercel origin. Add a custom domain or preview origin to that comma-separated allowlist if you use one, then redeploy the API.
+6. Test registration/sign-in, project and ward lists, project details, and a write action such as contact submission. Browser API requests should go to the Render URL, not `localhost` or the Vercel static site.
 
-Keep `JWT_SECRET`, `ADMIN_PASSWORD`, and database contents private. Do not use the local demo passwords in production. The SQLite disk is intended for a single API instance; configure backups and avoid scaling the API to multiple instances that write to the same SQLite database.
+To preserve existing local records, create a **fresh, empty** Turso database and run the importer before starting the API against it. It copies wards, users, projects, votes, milestones, feedback, budget records, contact messages, and audit logs while preserving IDs. The importer refuses to write if any destination table already contains data and performs the transfer transactionally. It uses the supplied admin credentials for the migrated default administrator and invalidates the built-in resident/officer/oversight demo passwords so the published local demo credentials cannot sign in to production.
+
+PowerShell:
+
+```powershell
+$env:DATABASE_PATH = ".\data\wardlens.sqlite"
+$env:TURSO_DATABASE_URL = "libsql://your-database-your-org.turso.io"
+$env:TURSO_AUTH_TOKEN = "your-private-token"
+$env:ADMIN_EMAIL = "admin@your-domain.example"
+$env:ADMIN_PASSWORD = "a-new-unique-admin-password"
+npm run db:import:turso
+```
+
+For macOS/Linux, prefix the command with `DATABASE_PATH=... TURSO_DATABASE_URL=... TURSO_AUTH_TOKEN=...`. Keep the token private and do not commit it. After the import completes, configure the same Turso URL/token in Render and deploy the API. If you skip importing, Turso starts with seeded example records. Keep `JWT_SECRET`, `ADMIN_PASSWORD`, `TURSO_AUTH_TOKEN`, and database contents private. Do not use local development passwords in production. Configure Turso backups and review its access controls for your deployment.
 
 ## Production build and PWA preview
 
@@ -90,7 +104,9 @@ Open `http://localhost:4173`. The service worker registers in production builds.
 | `JWT_EXPIRES_IN` | Session lifetime | `12h` |
 | `CORS_ORIGIN` | Comma-separated frontend origins allowed by API | `http://localhost:5173` |
 | `VITE_API_URL` | API base URL used by Vite frontend; set to the hosted API URL when deploying the frontend separately | `http://localhost:4000/api` |
-| `DATABASE_PATH` | SQLite database path | `./data/wardlens.sqlite` |
+| `DATABASE_PATH` | Local SQLite database path; ignored when Turso is configured | `./data/wardlens.sqlite` |
+| `TURSO_DATABASE_URL` | Hosted Turso/libSQL database URL; configure together with the auth token | unset (uses local SQLite) |
+| `TURSO_AUTH_TOKEN` | Secret token used to connect to the hosted Turso database | unset (uses local SQLite) |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Seed admin credentials | See `.env.example` |
 | `RESIDENT_EMAIL` / `RESIDENT_PASSWORD` | Seed resident credentials | See `.env.example` |
 
@@ -102,8 +118,9 @@ Open `http://localhost:4173`. The service worker registers in production builds.
 wardlens/
   public/                 PWA manifest, service worker, SVG logo and favicon
   server/
-    db.js                 SQLite schema, indexes, seed data, audit helpers
+    db.js                 Turso/SQLite adapters, schema, seed data, audit helpers
     index.js              Express API, authentication, validation and route handlers
+    import-sqlite-to-turso.js  One-time local data import utility
   scripts/
     dev.js                Starts API + Vite and shuts both down together
   src/

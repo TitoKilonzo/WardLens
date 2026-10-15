@@ -65,6 +65,28 @@ test('public project listing contains the seeded demonstration projects', async 
   assert.ok(body.projects.some((p) => p.title === 'Central Market Clean Water Point'));
 });
 
+test('ward, project-detail and dashboard routes return database-backed data', async () => {
+  const wardsResponse = await fetch(`${apiBase}/wards`);
+  assert.equal(wardsResponse.status, 200);
+  assert.ok((await wardsResponse.json()).wards.some((ward) => ward.slug === 'central-ward'));
+
+  const wardResponse = await fetch(`${apiBase}/wards/central-ward`);
+  assert.equal(wardResponse.status, 200);
+  assert.ok((await wardResponse.json()).projects.length > 0);
+
+  const projectResponse = await fetch(`${apiBase}/projects/1`);
+  assert.equal(projectResponse.status, 200);
+  assert.equal((await projectResponse.json()).project.id, 1);
+
+  const statsResponse = await fetch(`${apiBase}/admin/stats`, { headers: { Authorization: `Bearer ${adminToken}` } });
+  assert.equal(statsResponse.status, 200);
+  assert.ok((await statsResponse.json()).stats.projects >= 6);
+
+  const dashboardResponse = await fetch(`${apiBase}/dashboard`, { headers: { Authorization: `Bearer ${residentToken}` } });
+  assert.equal(dashboardResponse.status, 200);
+  assert.ok(Array.isArray((await dashboardResponse.json()).proposals));
+});
+
 test('resident can submit a proposal and vote only once', async () => {
   const proposalResponse = await fetch(`${apiBase}/projects`, { method:'POST', headers:{Authorization:`Bearer ${residentToken}`,'Content-Type':'application/json'}, body:JSON.stringify({title:'Test community water access point',description:'Residents need a reliable access point for drinking water near the main community walking route.',category:'Water & sanitation',ward_id:1,estimated_cost:750000,location:'North end of Central Ward'}) });
   assert.equal(proposalResponse.status,201);
