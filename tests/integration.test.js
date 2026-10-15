@@ -14,17 +14,17 @@ let adminToken = '';
 
 before(async () => {
   for (const suffix of ['', '-wal', '-shm']) { try { fs.unlinkSync(dbPath + suffix); } catch { /* nothing to clean */ } }
-  server = spawn(process.execPath, ['server/index.js'], { cwd: process.cwd(), env: { ...process.env, PORT: String(port), DATABASE_PATH: './data/test-wardlens.sqlite', TURSO_DATABASE_URL: '', TURSO_AUTH_TOKEN: '', JWT_SECRET: 'test-secret-for-integration-tests-only', ADMIN_EMAIL:'test-admin@example.com', ADMIN_PASSWORD:'TestingAdmin123!', RESIDENT_EMAIL:'test-resident@example.com', RESIDENT_PASSWORD:'TestingResident123!', DEMO_LOGINS_ENABLED:'true', DEMO_RESIDENT_EMAIL:'hosted-demo-resident@example.com', DEMO_RESIDENT_PASSWORD:'HostedDemoResident123!', DEMO_OFFICER_EMAIL:'hosted-demo-officer@example.com', DEMO_OFFICER_PASSWORD:'HostedDemoOfficer123!', DEMO_OVERSIGHT_EMAIL:'hosted-demo-oversight@example.com', DEMO_OVERSIGHT_PASSWORD:'HostedDemoOversight123!', CORS_ORIGIN: `http://localhost:${port}/` }, stdio: 'ignore' });
+  server = spawn(process.execPath, ['server/index.js'], { cwd: process.cwd(), env: { ...process.env, PORT: String(port), NODE_ENV: 'development', DATABASE_PATH: './data/test-wardlens.sqlite', TURSO_DATABASE_URL: '', TURSO_AUTH_TOKEN: '', JWT_SECRET: 'test-secret-for-integration-tests-only', ADMIN_EMAIL:'admin@wardlens.com', ADMIN_PASSWORD:'Admin123!', RESIDENT_EMAIL:'resident@wardlens.com', RESIDENT_PASSWORD:'Resident123!', DEMO_LOGINS_ENABLED:'true', DEMO_RESIDENT_EMAIL:'hosted-demo-resident@example.com', DEMO_RESIDENT_PASSWORD:'HostedDemoResident123!', DEMO_OFFICER_EMAIL:'hosted-demo-officer@example.com', DEMO_OFFICER_PASSWORD:'HostedDemoOfficer123!', DEMO_OVERSIGHT_EMAIL:'hosted-demo-oversight@example.com', DEMO_OVERSIGHT_PASSWORD:'HostedDemoOversight123!', CORS_ORIGIN: `http://localhost:${port}/` }, stdio: 'ignore' });
   let ready = false;
   for (let i=0; i<100; i++) {
     try { const r = await fetch(`${apiBase}/health`); if (r.ok) { ready = true; break; } } catch { /* server is starting */ }
     await delay(100);
   }
   assert.equal(ready, true, 'API server should start for integration tests');
-  const residentResponse = await fetch(`${apiBase}/auth/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:'test-resident@example.com',password:'TestingResident123!'}) });
+  const residentResponse = await fetch(`${apiBase}/auth/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:'resident@wardlens.com',password:'Resident123!'}) });
   assert.equal(residentResponse.status,200);
   residentToken = (await residentResponse.json()).token;
-  const adminResponse = await fetch(`${apiBase}/auth/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:'test-admin@example.com',password:'TestingAdmin123!'}) });
+  const adminResponse = await fetch(`${apiBase}/auth/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:'admin@wardlens.com',password:'Admin123!'}) });
   assert.equal(adminResponse.status,200);
   adminToken = (await adminResponse.json()).token;
 });
@@ -45,17 +45,35 @@ test('sign-in role must match the authenticated account role', async () => {
   const mismatch = await fetch(`${apiBase}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'test-admin@example.com', password: 'TestingAdmin123!', role: 'resident' })
+    body: JSON.stringify({ email: 'admin@wardlens.com', password: 'Admin123!', role: 'resident' })
   });
   assert.equal(mismatch.status, 403);
 
   const match = await fetch(`${apiBase}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'test-admin@example.com', password: 'TestingAdmin123!', role: 'admin' })
+    body: JSON.stringify({ email: 'admin@wardlens.com', password: 'Admin123!', role: 'admin' })
   });
   assert.equal(match.status, 200);
   assert.equal((await match.json()).user.role, 'admin');
+});
+
+test('local demo credentials sign in with their assigned roles', async () => {
+  const accounts = [
+    { email: 'resident@wardlens.com', password: 'Resident123!', role: 'resident' },
+    { email: 'officer@wardlens.com', password: 'Officer123!', role: 'officer' },
+    { email: 'oversight@wardlens.com', password: 'Oversight123!', role: 'oversight' },
+    { email: 'admin@wardlens.com', password: 'Admin123!', role: 'admin' }
+  ];
+  for (const account of accounts) {
+    const response = await fetch(`${apiBase}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(account)
+    });
+    assert.equal(response.status, 200, `${account.role} local demo account should sign in`);
+    assert.equal((await response.json()).user.role, account.role);
+  }
 });
 
 test('configured demonstration accounts can sign in with their assigned roles', async () => {

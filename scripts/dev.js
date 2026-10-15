@@ -7,10 +7,10 @@ const viteEntry = path.join(root, 'node_modules', 'vite', 'bin', 'vite.js');
 const children = [];
 let shuttingDown = false;
 
-function start(label, args) {
+function start(label, args, envOverrides = {}) {
   const child = spawn(process.execPath, args, {
     cwd: root,
-    env: { ...process.env },
+    env: { ...process.env, ...envOverrides },
     stdio: 'inherit',
     shell: false,
   });
@@ -41,6 +41,17 @@ function shutdown(code = 0) {
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
 
-console.log('Starting WardLens API and Vite frontend…');
-start('API', [path.join(root, 'server', 'index.js')]);
-start('Vite', [viteEntry, '--host', '0.0.0.0']);
+console.log('Starting WardLens API with local SQLite and Vite frontend…');
+start('API', [path.join(root, 'server', 'index.js')], {
+  NODE_ENV: 'development',
+  DATABASE_PATH: '',
+  TURSO_DATABASE_URL: '',
+  TURSO_AUTH_TOKEN: '',
+  ADMIN_EMAIL: '',
+  ADMIN_PASSWORD: '',
+  RESIDENT_EMAIL: '',
+  RESIDENT_PASSWORD: '',
+  DEMO_LOGINS_ENABLED: 'false',
+  CORS_ORIGIN: 'http://localhost:5173',
+});
+start('Vite', [viteEntry, '--host', '0.0.0.0'], { VITE_API_URL: '' });

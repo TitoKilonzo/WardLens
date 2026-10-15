@@ -35,7 +35,7 @@ The included ward names, residents, project statuses, budgets, and expenditure r
    npm install
    ```
 
-3. Copy `.env.example` to `.env`. The defaults work for local development, but change the secrets before deploying.
+3. Copy `.env.example` to `.env` if needed. `npm run dev` uses local SQLite and the demo accounts below, regardless of any Turso or hosted frontend settings in `.env`.
 4. Start both the API and web app together:
 
    ```bash
@@ -46,25 +46,25 @@ The included ward names, residents, project statuses, budgets, and expenditure r
 
 On Windows, after installing dependencies and configuring `.env`, you can double-click `start-wardlens.bat` to start both services and launch the site in your browser. `npm run dev:web` is available when you intentionally want to run only the frontend.
 
-When no Turso credentials are configured, SQLite creates `data/wardlens.sqlite` automatically and seeds example wards, projects, budget records, milestones, and local development accounts on first run. This local adapter is retained for development and integration tests. Set both `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` to use Turso instead; the API creates the schema and initial example records on its first connection. A partial Turso configuration is rejected rather than silently falling back to local SQLite.
+`npm run dev` uses SQLite at `data/wardlens.sqlite` and seeds example wards, projects, budget records, milestones, and local development accounts on first run, regardless of any Turso credentials in `.env`. To run the API directly against Turso, configure both `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` and use `npm run api`; it creates the schema and initial example records on its first connection. A partial Turso configuration is rejected rather than silently falling back to local SQLite.
 
 ## Demo accounts
 
 | Role | Email | Password |
 |---|---|---|
-| Resident | `resident@wardlens.com` | `ChangeMe_Resident_123!` (from `.env.example`) |
+| Resident | `resident@wardlens.com` | `Resident123!` |
 | Officer | `officer@wardlens.com` | `Officer123!` |
 | Oversight | `oversight@wardlens.com` | `Oversight123!` |
-| Administrator | `admin@wardlens.com` | `ChangeMe_Admin_123!` (from `.env.example`) |
+| Administrator | `admin@wardlens.com` | `Admin123!` |
 
-These built-in credentials are for local development only and are not displayed in the app's sign-in UI. Production demonstration accounts use separately configured credentials in Render; do not reuse the local passwords. To enable hosted resident, officer, and oversight demonstration accounts, set `DEMO_LOGINS_ENABLED=true` and set each `DEMO_*_PASSWORD` to a unique password of at least 12 characters in Render, then redeploy the API. Default demonstration emails are `resident@wardlens.com`, `officer@wardlens.com`, and `oversight@wardlens.com`; they can be changed using the matching `DEMO_*_EMAIL` variables. The administrator signs in using `ADMIN_EMAIL` and `ADMIN_PASSWORD`. On startup, the API creates or updates only those role-specific demo accounts in Turso; it does not reset projects or other records. Leave demo logins disabled when the hosted demo is no longer needed.
+These built-in credentials are for local development only and are not displayed in the app's sign-in UI. `npm run dev` always uses `data/wardlens.sqlite`, even if `.env` contains Turso or hosted frontend settings; it also points the frontend at the local API. They are not created in or used by the shared hosted database. On Render, leave `DEMO_LOGINS_ENABLED=false`. Only the configured `ADMIN_EMAIL` / `ADMIN_PASSWORD` account is created by default; resident, officer, and oversight users must register or be explicitly configured as separate hosted demo accounts. Keep the hosted administrator password private.
 
 ## Deploy frontend to Vercel and API to Render with Turso
 
 The frontend is a static Vite application and can be deployed to Vercel. The Express API uses Turso's hosted libSQL database in production, so it does not depend on a local file that can disappear on serverless hosts. Turso is SQLite-compatible and relational; the app keeps its existing relational schema and SQL API. This repository includes [`render.yaml`](./render.yaml) for the API host environment.
 
 1. Create a Turso database and generate an authentication token using the [Turso dashboard or CLI](https://docs.turso.tech/). Copy the database URL (usually starts with `libsql://`) and token; keep the token private.
-2. In Render, create a **Blueprint** from this repository and apply `render.yaml`. Set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and `ADMIN_EMAIL` in the service environment. The blueprint sets `CORS_ORIGIN` to `https://wardlens.vercel.app`; if using another frontend domain, change it to that exact origin (without a path). Render generates `JWT_SECRET` and `ADMIN_PASSWORD`; retrieve the generated administrator password from the Render environment settings and store it securely. For hosted demonstrations, set `DEMO_LOGINS_ENABLED=true` and enter unique `DEMO_RESIDENT_PASSWORD`, `DEMO_OFFICER_PASSWORD`, and `DEMO_OVERSIGHT_PASSWORD` values (at least 12 characters each) before deploying. The default role-specific emails are listed in the Render environment settings and can be customized.
+2. In Render, create a **Blueprint** from this repository and apply `render.yaml`. Set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and `ADMIN_EMAIL` in the service environment. The blueprint sets `CORS_ORIGIN` to `https://wardlens.vercel.app`; if using another frontend domain, change it to that exact origin (without a path). Render generates `JWT_SECRET` and `ADMIN_PASSWORD`; retrieve the generated administrator password from the Render environment settings and store it securely. Keep `DEMO_LOGINS_ENABLED=false` unless you deliberately configure separate hosted demonstration passwords and emails; never reuse the published local credentials.
 3. Wait for the API service to deploy. The API initializes the Turso schema and sample records before listening. Verify its health endpoint at `https://<your-api-service>.onrender.com/api/health`; it should return JSON with `"status":"ok"`.
 4. Import the repository into Vercel. Set the project root to the repository root and add the environment variable `VITE_API_URL` with the API's full URL, including `/api`, for example `https://<your-api-service>.onrender.com/api`.
 5. Deploy or redeploy the Vercel project after setting `VITE_API_URL`; Vite embeds this value at build time. Keep the Render service's `CORS_ORIGIN` set to the exact deployed Vercel origin. Add a custom domain or preview origin to that comma-separated allowlist if you use one, then redeploy the API. The local `.env` is for development only and is not used to configure Render.
@@ -107,8 +107,8 @@ Open `http://localhost:4173`. The service worker registers in production builds.
 | `DATABASE_PATH` | Local SQLite database path; ignored when Turso is configured | `./data/wardlens.sqlite` |
 | `TURSO_DATABASE_URL` | Hosted Turso/libSQL database URL; configure together with the auth token | unset (uses local SQLite) |
 | `TURSO_AUTH_TOKEN` | Secret token used to connect to the hosted Turso database | unset (uses local SQLite) |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Seed admin credentials | See `.env.example` |
-| `RESIDENT_EMAIL` / `RESIDENT_PASSWORD` | Seed resident credentials | See `.env.example` |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Seed admin credentials; hosted deployments must use private values | See `.env.example` |
+| `RESIDENT_EMAIL` / `RESIDENT_PASSWORD` | Seed resident credentials; local `npm run dev` uses the documented demo account | See `.env.example` |
 | `DEMO_LOGINS_ENABLED` | Enable hosted resident/officer/oversight demonstration accounts | `false` |
 | `DEMO_RESIDENT_EMAIL` / `DEMO_RESIDENT_PASSWORD` | Hosted demo resident account; use a unique password of at least 12 characters | unset |
 | `DEMO_OFFICER_EMAIL` / `DEMO_OFFICER_PASSWORD` | Hosted demo officer account; use a unique password of at least 12 characters | unset |
