@@ -21,3 +21,17 @@ services:
         sync: false
       - key: CORS_ORIGIN
         value: https://wardlens.vercel.app
+      - key: DEMO_LOGINS_ENABLED
+        value: false
+      - key: DEMO_RESIDENT_EMAIL
+        value: resident@wardlens.com
+      - key: DEMO_RESIDENT_PASSWORD
+        sync: false
+      - key: DEMO_OFFICER_EMAIL
+        value: officer@wardlens.com
+      - key: DEMO_OFFICER_PASSWORD
+        sync: false
+      - key: DEMO_OVERSIGHT_EMAIL
+        value: oversight@wardlens.com
+      - key: DEMO_OVERSIGHT_PASSWORD
+        sync: false

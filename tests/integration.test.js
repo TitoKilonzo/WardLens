@@ -14,7 +14,7 @@ let adminToken = '';
 
 before(async () => {
   for (const suffix of ['', '-wal', '-shm']) { try { fs.unlinkSync(dbPath + suffix); } catch { /* nothing to clean */ } }
-  server = spawn(process.execPath, ['server/index.js'], { cwd: process.cwd(), env: { ...process.env, PORT: String(port), DATABASE_PATH: './data/test-wardlens.sqlite', TURSO_DATABASE_URL: '', TURSO_AUTH_TOKEN: '', JWT_SECRET: 'test-secret-for-integration-tests-only', ADMIN_EMAIL:'test-admin@example.com', ADMIN_PASSWORD:'TestingAdmin123!', RESIDENT_EMAIL:'test-resident@example.com', RESIDENT_PASSWORD:'TestingResident123!', CORS_ORIGIN: `http://localhost:${port}/` }, stdio: 'ignore' });
+  server = spawn(process.execPath, ['server/index.js'], { cwd: process.cwd(), env: { ...process.env, PORT: String(port), DATABASE_PATH: './data/test-wardlens.sqlite', TURSO_DATABASE_URL: '', TURSO_AUTH_TOKEN: '', JWT_SECRET: 'test-secret-for-integration-tests-only', ADMIN_EMAIL:'test-admin@example.com', ADMIN_PASSWORD:'TestingAdmin123!', RESIDENT_EMAIL:'test-resident@example.com', RESIDENT_PASSWORD:'TestingResident123!', DEMO_LOGINS_ENABLED:'true', DEMO_RESIDENT_EMAIL:'hosted-demo-resident@example.com', DEMO_RESIDENT_PASSWORD:'HostedDemoResident123!', DEMO_OFFICER_EMAIL:'hosted-demo-officer@example.com', DEMO_OFFICER_PASSWORD:'HostedDemoOfficer123!', DEMO_OVERSIGHT_EMAIL:'hosted-demo-oversight@example.com', DEMO_OVERSIGHT_PASSWORD:'HostedDemoOversight123!', CORS_ORIGIN: `http://localhost:${port}/` }, stdio: 'ignore' });
   let ready = false;
   for (let i=0; i<100; i++) {
     try { const r = await fetch(`${apiBase}/health`); if (r.ok) { ready = true; break; } } catch { /* server is starting */ }
@@ -56,6 +56,23 @@ test('sign-in role must match the authenticated account role', async () => {
   });
   assert.equal(match.status, 200);
   assert.equal((await match.json()).user.role, 'admin');
+});
+
+test('configured demonstration accounts can sign in with their assigned roles', async () => {
+  const accounts = [
+    { email: 'hosted-demo-resident@example.com', password: 'HostedDemoResident123!', role: 'resident' },
+    { email: 'hosted-demo-officer@example.com', password: 'HostedDemoOfficer123!', role: 'officer' },
+    { email: 'hosted-demo-oversight@example.com', password: 'HostedDemoOversight123!', role: 'oversight' }
+  ];
+  for (const account of accounts) {
+    const response = await fetch(`${apiBase}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(account)
+    });
+    assert.equal(response.status, 200, `${account.role} demonstration account should sign in`);
+    assert.equal((await response.json()).user.role, account.role);
+  }
 });
 
 test('public project listing contains the seeded demonstration projects', async () => {

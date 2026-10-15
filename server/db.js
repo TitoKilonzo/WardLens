@@ -148,6 +148,7 @@ export const adminEmail = (process.env.ADMIN_EMAIL || 'admin@wardlens.com').trim
 const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123!';
 export const residentEmail = (process.env.RESIDENT_EMAIL || 'resident@wardlens.com').trim().toLowerCase();
 const residentPassword = process.env.RESIDENT_PASSWORD || 'Resident123!';
+const demoLoginsEnabled = process.env.DEMO_LOGINS_ENABLED === 'true';
 
 export const schema = `
 CREATE TABLE IF NOT EXISTS wards (
@@ -300,6 +301,57 @@ export async function initializeDatabase({ seed = true, developmentUsers = !isPr
     await insertUser.run('Amina Njeri', residentEmail, bcrypt.hashSync(residentPassword, 10), 'resident', 1);
     await insertUser.run('County Project Officer', 'officer@wardlens.com', bcrypt.hashSync('Officer123!', 10), 'officer', 1);
     await insertUser.run('Public Finance Reviewer', 'oversight@wardlens.com', bcrypt.hashSync('Oversight123!', 10), 'oversight', 1);
+  }
+
+  if (demoLoginsEnabled) {
+    const configuredDemoAccounts = [
+      {
+        name: 'Demonstration Resident',
+        role: 'resident',
+        email: (process.env.DEMO_RESIDENT_EMAIL || residentEmail).trim().toLowerCase(),
+        password: process.env.DEMO_RESIDENT_PASSWORD
+      },
+      {
+        name: 'Demonstration Project Officer',
+        role: 'officer',
+        email: (process.env.DEMO_OFFICER_EMAIL || 'officer@wardlens.com').trim().toLowerCase(),
+        password: process.env.DEMO_OFFICER_PASSWORD
+      },
+      {
+        name: 'Demonstration Oversight Reviewer',
+        role: 'oversight',
+        email: (process.env.DEMO_OVERSIGHT_EMAIL || 'oversight@wardlens.com').trim().toLowerCase(),
+        password: process.env.DEMO_OVERSIGHT_PASSWORD
+      }
+    ];
+    const demoEmails = new Set([adminEmail]);
+    for (const account of configuredDemoAccounts) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.email)) {
+        throw new Error(`Invalid email configured for the ${account.role} demonstration account.`);
+      }
+      if (!account.password || account.password.length < 12) {
+        throw new Error(`Set a unique DEMO_${account.role.toUpperCase()}_PASSWORD of at least 12 characters.`);
+      }
+      if (demoEmails.has(account.email)) {
+        throw new Error('Demonstration account emails must be unique and must not match ADMIN_EMAIL.');
+      }
+      demoEmails.add(account.email);
+    }
+    await db.transaction(async (tx) => {
+      for (const account of configuredDemoAccounts) {
+        const existing = await tx.prepare('SELECT id,role FROM users WHERE email=? COLLATE NOCASE').get(account.email);
+        if (existing && existing.role !== account.role) {
+          throw new Error(`The configured ${account.role} demonstration email is already assigned to a different account role.`);
+        }
+        const passwordHash = bcrypt.hashSync(account.password, 12);
+        if (existing) {
+          await tx.prepare('UPDATE users SET password_hash=? WHERE id=?').run(passwordHash, existing.id);
+        } else {
+          await tx.prepare('INSERT INTO users(name,email,password_hash,role,ward_id) VALUES(?,?,?,?,?)')
+            .run(account.name, account.email, passwordHash, account.role, 1);
+        }
+      }
+    });
   }
 
   await db.transaction(async (tx) => {
