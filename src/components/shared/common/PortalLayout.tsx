@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowUpRight, BarChart3, FilePlus2, FolderKanban, LayoutDashboard, LogOut, MapPinned, Menu, ShieldCheck, WalletCards, X } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
+import { PwaInstallButton } from './PwaInstallButton';
 
 const primaryLinks = [
   { label: 'Overview', to: '/dashboard', icon: LayoutDashboard },
@@ -65,7 +66,7 @@ export function PortalLayout() {
           {menuOpen ? <X size={20}/> : <Menu size={20}/>}
         </button>
         <div className="portal-page-title"><span>WardLens</span><strong>{currentTitle}</strong></div>
-        <div className="portal-topbar-right"><BarChart3 size={17}/><span>Community workspace</span></div>
+        <div className="portal-topbar-right"><PwaInstallButton/><BarChart3 size={17}/><span>Community workspace</span></div>
       </header>
       <main className="portal-content"><Outlet/></main>
     </div>

@@ -105,13 +105,8 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   const email = cleanText(req.body.email, 180).toLowerCase();
   const password = String(req.body.password || '');
-  const requestedRole = req.body.role;
-  if (requestedRole !== undefined && !['resident','officer','admin','oversight'].includes(requestedRole)) {
-    return error(res, 400, 'Choose a valid account type.');
-  }
   const row = await db.prepare('SELECT u.*, w.name AS ward_name FROM users u LEFT JOIN wards w ON w.id=u.ward_id WHERE u.email=?').get(email);
   if (!row || !bcrypt.compareSync(password, row.password_hash)) return error(res, 401, 'Email or password is incorrect.');
-  if (requestedRole && row.role !== requestedRole) return error(res, 403, 'This account does not match the selected sign-in type.');
   await audit(row.id, 'account.login', 'user', row.id);
   return res.json({ token: tokenFor(row), user: userFromRow(row) });
 });
@@ -283,9 +278,11 @@ app.post('/api/admin/projects/:id/milestones', requireAuth, allow('officer','adm
   const title = cleanText(req.body.title, 180);
   const description = cleanText(req.body.description, 1000);
   const dueDate = cleanText(req.body.due_date, 10) || null;
+  const status = cleanText(req.body.status, 30) || 'planned';
   if (!id || !await db.prepare('SELECT id FROM projects WHERE id=?').get(id)) return error(res, 404, 'Project not found.');
   if (title.length < 4) return error(res, 400, 'Milestone title is too short.');
-  const r = await db.prepare('INSERT INTO milestones(project_id,title,description,status,due_date,evidence_url,updated_by) VALUES(?,?,?,? ,?,?,?)').run(id,title,description,req.body.status || 'planned',dueDate,cleanText(req.body.evidence_url,500),req.user.id);
+  if (!['planned','in_progress','completed','delayed'].includes(status)) return error(res, 400, 'Invalid milestone status.');
+  const r = await db.prepare('INSERT INTO milestones(project_id,title,description,status,due_date,evidence_url,updated_by) VALUES(?,?,?,?,?,?,?)').run(id, title, description, status, dueDate, cleanText(req.body.evidence_url, 500), req.user.id);
   await db.prepare('UPDATE projects SET updated_at=CURRENT_TIMESTAMP WHERE id=?').run(id);
   await audit(req.user.id, 'milestone.created', 'milestone', Number(r.lastInsertRowid), { project_id: id });
   res.status(201).json({ message: 'Milestone added.' });

@@ -2,20 +2,11 @@ import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import type { Role } from '../types';
 import { Notice } from '../components/shared/ui/Notice';
-
-const accountTypes: { role: Role; label: string }[] = [
-  { role: 'resident', label: 'Resident' },
-  { role: 'officer', label: 'Officer' },
-  { role: 'admin', label: 'Admin' },
-  { role: 'oversight', label: 'Oversight' },
-];
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<Role>('resident');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -23,15 +14,13 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from;
-  const selectedAccountType = accountTypes.find((accountType) => accountType.role === role)?.label || 'Resident';
-
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
     setBusy(true);
     try {
-      await signIn(email, password, role);
-      navigate(from || (role === 'resident' ? '/dashboard' : '/admin'), { replace: true });
+      const user = await signIn(email, password);
+      navigate(from || (user.role === 'resident' ? '/dashboard' : '/admin'), { replace: true });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to sign in.');
     } finally {
@@ -55,15 +44,9 @@ export default function Login() {
         <Link to="/" className="auth-home-link"><ArrowLeft size={15}/> Back to home</Link>
         <div className="eyebrow">WELCOME BACK</div>
         <h1>Sign in to WardLens.</h1>
-        <p className="auth-subtitle">Choose your account type, then enter your sign-in details.</p>
+        <p className="auth-subtitle">Enter your email and password to continue.</p>
         {error && <Notice>{error}</Notice>}
         <form className="form-stack" onSubmit={submit}>
-          <label htmlFor="account-role">Sign in as
-            <select id="account-role" name="role" required value={role} onChange={(event) => setRole(accountTypes.find((accountType) => accountType.role === event.target.value)?.role || 'resident')}>
-              {accountTypes.map((accountType) => <option key={accountType.role} value={accountType.role}>{accountType.label}</option>)}
-            </select>
-            <small>Your account type is verified securely when you sign in.</small>
-          </label>
           <label htmlFor="login-email">Email address
             <input id="login-email" name="email" type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com"/>
           </label>
@@ -74,7 +57,7 @@ export default function Login() {
             </span>
           </label>
           <div className="auth-inline-link"><span>Secure sign-in</span><span><ShieldCheck size={14}/> Protected session</span></div>
-          <button className="button button-primary button-large auth-submit" disabled={busy}>{busy ? 'Signing in…' : `Sign in as ${selectedAccountType}`} <ArrowRight size={17}/></button>
+          <button className="button button-primary button-large auth-submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'} <ArrowRight size={17}/></button>
         </form>
         <p className="auth-switch">New to WardLens? <Link to="/register">Create a resident account</Link></p>
       </div>

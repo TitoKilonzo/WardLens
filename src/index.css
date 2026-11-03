@@ -98,3 +98,22 @@ button.dashboard-metric-card:hover{transform:translateY(-2px);border-color:#aad8
 .portal-scrim{display:none}
 @media(max-width:900px){.portal-sidebar{width:225px}.portal-main{margin-left:225px}.portal-content{padding-left:21px;padding-right:21px}.portal-topbar{padding:0 21px}}
 @media(max-width:680px){.auth-page{display:flex;flex-direction:column}.auth-visual{min-height:235px}.auth-visual-text{padding:25px 26px}.auth-logo img{width:145px}.auth-quote-mark{display:none}.auth-visual-text h2{font-size:25px;margin:30px 0 5px}.auth-visual-text>p,.auth-visual-bottom{display:none}.auth-form-side{min-height:calc(100vh - 235px);align-items:flex-start;padding:26px 23px 38px}.auth-form-wrap{max-width:480px;margin:0 auto}.portal-sidebar{width:min(290px,84vw);transform:translateX(-105%);transition:transform .22s ease;box-shadow:12px 0 35px rgba(17,46,68,.08)}.portal-sidebar.portal-sidebar-open{transform:translateX(0)}.portal-main{margin-left:0}.portal-topbar{height:60px;padding:0 16px;gap:12px}.portal-menu-toggle{display:grid;width:34px;height:34px;border-radius:8px}.portal-menu-toggle:hover{background:#f0f7fc;color:#1687d9}.portal-topbar-right{font-size:0}.portal-topbar-right svg{width:19px;height:19px}.portal-content{min-height:calc(100vh - 60px);padding:1px 16px 25px}.portal-content .page-container{padding-top:26px;padding-bottom:36px}.portal-scrim{display:block;position:fixed;inset:0;z-index:60;border:0;background:rgba(16,38,56,.34)}}
+.pwa-install-button{min-height:36px;padding:8px 11px;font-size:12px}
+.mobile-menu-backdrop{display:none}
+.mobile-login-link{display:none}
+@media(max-width:680px){
+  .header-inner{gap:10px}
+  .brand img{width:138px}
+  .header-actions{gap:8px}
+  .login-link{display:none}
+  .mobile-login-link{display:block}
+  .main-nav{top:calc(100% + 8px);left:auto;right:16px;width:min(340px,calc(100vw - 32px));padding:12px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 16px 34px rgba(21,53,77,.18);z-index:2}
+  .mobile-menu-backdrop{display:block;position:fixed;inset:68px 0 0;width:100%;height:calc(100vh - 68px);background:rgba(21,53,77,.25);border:0;z-index:1}
+  .pwa-install-button{padding:7px 9px;font-size:11px}
+  .portal-topbar-right>svg{display:none}
+}
+@media(max-width:380px){
+  .brand img{width:112px}
+  .pwa-install-button{gap:5px;padding:6px;font-size:10px}
+  .mobile-menu-button{padding:3px}
+}

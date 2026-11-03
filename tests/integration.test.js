@@ -41,21 +41,22 @@ test('health endpoint returns the service state', async () => {
   assert.equal((await response.json()).status,'ok');
 });
 
-test('sign-in role must match the authenticated account role', async () => {
-  const mismatch = await fetch(`${apiBase}/auth/login`, {
+test('sign-in uses the authenticated account role without a role selection', async () => {
+  const response = await fetch(`${apiBase}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'admin@wardlens.com', password: 'Admin123!' })
+  });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).user.role, 'admin');
+
+  const spoofedRole = await fetch(`${apiBase}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: 'admin@wardlens.com', password: 'Admin123!', role: 'resident' })
   });
-  assert.equal(mismatch.status, 403);
-
-  const match = await fetch(`${apiBase}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'admin@wardlens.com', password: 'Admin123!', role: 'admin' })
-  });
-  assert.equal(match.status, 200);
-  assert.equal((await match.json()).user.role, 'admin');
+  assert.equal(spoofedRole.status, 200);
+  assert.equal((await spoofedRole.json()).user.role, 'admin');
 });
 
 test('local demo credentials sign in with their assigned roles', async () => {
@@ -140,6 +141,24 @@ test('management routes enforce role-based permissions', async () => {
   assert.equal(residentBlocked.status,403);
   const adminAllowed = await fetch(`${apiBase}/admin/projects`, { headers:{Authorization:`Bearer ${adminToken}`} });
   assert.equal(adminAllowed.status,200);
+});
+
+test('milestone creation rejects invalid statuses', async () => {
+  const response = await fetch(`${apiBase}/admin/projects/1/milestones`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${adminToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      title: 'Invalid milestone status',
+      description: 'This milestone should be rejected because the submitted status is not supported.',
+      status: 'archived'
+    })
+  });
+
+  assert.equal(response.status, 400);
+  assert.match(await response.text(), /invalid milestone status/i);
 });
 
 test('contact form stores a valid message for the management inbox', async () => {
